@@ -145,10 +145,10 @@ func handleApply(configPath string) error {
 	fmt.Printf("Starting resource synchronization from %s...\n", configPath)
 	fmt.Print(requiredTokenScopeNotice)
 
-	for _, repoPath := range cfg.Repos {
-		parts := strings.SplitN(repoPath, "/", 2)
+	for _, repoEntry := range cfg.Repos {
+		parts := strings.SplitN(repoEntry.Repo, "/", 2)
 		if len(parts) != 2 {
-			fmt.Printf("[SKIP] Invalid repository format %q. Expected 'owner/repo'.\n", repoPath)
+			fmt.Printf("[SKIP] Invalid repository format %q. Expected 'owner/repo'.\n", repoEntry.Repo)
 			continue
 		}
 		owner, repo := parts[0], parts[1]
@@ -157,6 +157,9 @@ func handleApply(configPath string) error {
 
 		// Sync repository secrets
 		for name, val := range cfg.Secrets {
+			if !repoEntry.ShouldInclude(name) {
+				continue
+			}
 			fmt.Printf("  -> Syncing repo secret: %s\n", name)
 			if err := ghClient.SyncRepositorySecret(ctx, owner, repo, name, val); err != nil {
 				return fmt.Errorf("failed to sync repo secret %s for %s/%s: %w", name, owner, repo, err)
@@ -165,6 +168,9 @@ func handleApply(configPath string) error {
 
 		// Sync repository variables
 		for name, val := range cfg.Vars {
+			if !repoEntry.ShouldInclude(name) {
+				continue
+			}
 			fmt.Printf("  -> Syncing repo variable: %s\n", name)
 			if err := ghClient.SyncRepositoryVariable(ctx, owner, repo, name, val); err != nil {
 				return fmt.Errorf("failed to sync repo variable %s for %s/%s: %w", name, owner, repo, err)
@@ -173,6 +179,9 @@ func handleApply(configPath string) error {
 
 		// Sync environment secrets and variables
 		for _, envCfg := range cfg.Environments {
+			if !repoEntry.ShouldInclude(envCfg.Name) {
+				continue
+			}
 			fmt.Printf("  -> Processing environment: %s\n", envCfg.Name)
 			for name, val := range envCfg.Secrets {
 				fmt.Printf("     -> Syncing env secret: %s\n", name)

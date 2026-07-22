@@ -112,7 +112,7 @@ func TestRun(t *testing.T) {
 		defer os.Unsetenv("GITHUB_TOKEN")
 
 		loadConfigFunc = func(path string) (*config.Config, error) {
-			return &config.Config{Repos: []string{}}, nil
+			return &config.Config{Repos: []config.RepoEntry{}}, nil
 		}
 
 		err := run([]string{"apply", "-c", "config.yaml"})
@@ -127,7 +127,7 @@ func TestRun(t *testing.T) {
 
 		loadConfigFunc = func(path string) (*config.Config, error) {
 			return &config.Config{
-				Repos: []string{"invalidrepo", "owner/repo1"},
+				Repos: []config.RepoEntry{{Repo: "invalidrepo", Include: nil}, {Repo: "owner/repo1", Include: nil}},
 				Secrets: map[string]string{
 					"REPO_KEY": "REPO_VAL",
 				},
@@ -197,7 +197,7 @@ func TestRun(t *testing.T) {
 
 		loadConfigFunc = func(path string) (*config.Config, error) {
 			return &config.Config{
-				Repos:   []string{"owner/repo1"},
+				Repos:   []config.RepoEntry{{Repo: "owner/repo1", Include: nil}},
 				Secrets: map[string]string{"FAIL_KEY": "VAL"},
 			}, nil
 		}
@@ -222,7 +222,7 @@ func TestRun(t *testing.T) {
 
 		loadConfigFunc = func(path string) (*config.Config, error) {
 			return &config.Config{
-				Repos: []string{"owner/repo1"},
+				Repos: []config.RepoEntry{{Repo: "owner/repo1", Include: nil}},
 				Vars:  map[string]string{"FAIL_VAR_KEY": "VAL"},
 			}, nil
 		}
@@ -247,7 +247,7 @@ func TestRun(t *testing.T) {
 
 		loadConfigFunc = func(path string) (*config.Config, error) {
 			return &config.Config{
-				Repos: []string{"owner/repo1"},
+				Repos: []config.RepoEntry{{Repo: "owner/repo1", Include: nil}},
 				Environments: []config.EnvironmentConfig{
 					{
 						Name:    "staging",
@@ -277,7 +277,7 @@ func TestRun(t *testing.T) {
 
 		loadConfigFunc = func(path string) (*config.Config, error) {
 			return &config.Config{
-				Repos: []string{"owner/repo1"},
+				Repos: []config.RepoEntry{{Repo: "owner/repo1", Include: nil}},
 				Environments: []config.EnvironmentConfig{
 					{
 						Name: "staging",
@@ -349,4 +349,112 @@ func TestRun(t *testing.T) {
 			t.Fatal("expected error for init subcommand, got nil")
 		}
 	})
+}
+
+func TestApplyPerRepoFiltering(t *testing.T) {
+	origLoadConfig := loadConfigFunc
+	origNewClient := newClientFunc
+	defer func() {
+		loadConfigFunc = origLoadConfig
+		newClientFunc = origNewClient
+	}()
+
+	os.Setenv("GITHUB_TOKEN", "dummy-token")
+	defer os.Unsetenv("GITHUB_TOKEN")
+
+	loadConfigFunc = func(path string) (*config.Config, error) {
+		return &config.Config{
+			Repos: []config.RepoEntry{
+				{Repo: "owner/all-repo", Include: nil},                                  // string format: all
+				{Repo: "owner/filtered-repo", Include: []string{"KEY_A", "production"}}, // object: only KEY_A and production env
+			},
+			Secrets: map[string]string{
+				"KEY_A": "VAL_A",
+				"KEY_B": "VAL_B",
+			},
+			Vars: map[string]string{
+				"VAR_A": "VAR_VAL_A",
+			},
+			Environments: []config.EnvironmentConfig{
+				{
+					Name:    "production",
+					Secrets: map[string]string{"ENV_KEY": "ENV_VAL"},
+				},
+				{
+					Name: "staging",
+					Vars: map[string]string{"STAGE_VAR": "STAGE_VAL"},
+				},
+			},
+		}, nil
+	}
+
+	// Track what gets synced per repo
+	syncedSecrets := map[string][]string{}
+	syncedVars := map[string][]string{}
+	syncedEnvs := map[string][]string{}
+
+	newClientFunc = func(ctx context.Context, token string) resourceSyncer {
+		return &mockSyncer{
+			syncRepoSecretFunc: func(ctx context.Context, owner, repo, secretName, secretValue string) error {
+				key := owner + "/" + repo
+				syncedSecrets[key] = append(syncedSecrets[key], secretName)
+				return nil
+			},
+			syncRepoVariableFunc: func(ctx context.Context, owner, repo, varName, varValue string) error {
+				key := owner + "/" + repo
+				syncedVars[key] = append(syncedVars[key], varName)
+				return nil
+			},
+			syncEnvSecretFunc: func(ctx context.Context, owner, repo, envName, secretName, secretValue string) error {
+				key := owner + "/" + repo
+				syncedEnvs[key] = append(syncedEnvs[key], envName)
+				return nil
+			},
+			syncEnvVariableFunc: func(ctx context.Context, owner, repo, envName, varName, varValue string) error {
+				key := owner + "/" + repo
+				syncedEnvs[key] = append(syncedEnvs[key], envName)
+				return nil
+			},
+		}
+	}
+
+	err := run([]string{"apply", "-c", "config.yaml"})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// all-repo should get everything
+	if len(syncedSecrets["owner/all-repo"]) != 2 {
+		t.Errorf("expected all-repo to sync 2 secrets, got %v", syncedSecrets["owner/all-repo"])
+	}
+	if len(syncedVars["owner/all-repo"]) != 1 {
+		t.Errorf("expected all-repo to sync 1 var, got %v", syncedVars["owner/all-repo"])
+	}
+	if len(syncedEnvs["owner/all-repo"]) == 0 {
+		t.Error("expected all-repo to sync environments")
+	}
+
+	// filtered-repo should only get KEY_A (not KEY_B) and production env (not staging)
+	if len(syncedSecrets["owner/filtered-repo"]) != 1 || syncedSecrets["owner/filtered-repo"][0] != "KEY_A" {
+		t.Errorf("expected filtered-repo to sync only KEY_A, got %v", syncedSecrets["owner/filtered-repo"])
+	}
+	if len(syncedVars["owner/filtered-repo"]) != 0 {
+		t.Errorf("expected filtered-repo to sync 0 vars, got %v", syncedVars["owner/filtered-repo"])
+	}
+	// Should only have production env, not staging
+	for _, envName := range syncedEnvs["owner/filtered-repo"] {
+		if envName == "staging" {
+			t.Error("expected filtered-repo to NOT sync staging environment")
+		}
+	}
+	hasProduction := false
+	for _, envName := range syncedEnvs["owner/filtered-repo"] {
+		if envName == "production" {
+			hasProduction = true
+			break
+		}
+	}
+	if !hasProduction {
+		t.Error("expected filtered-repo to sync production environment")
+	}
 }

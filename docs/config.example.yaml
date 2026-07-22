@@ -1,0 +1,36 @@
+# gh-secret-sync 設定ファイルサンプル
+#
+# このファイルは gh-secret-sync の設定例（平文）です。
+# 実際に運用する際は SOPS 等で暗号化してご使用ください。
+
+# 1. 同期対象の GitHub リポジトリ一覧 (owner/repo 形式)
+repos:
+  - my-org/service-a
+  - my-org/service-b
+
+# 2. 全対象リポジトリに共通して同期される Repository Secrets
+secrets:
+  GLOBAL_API_KEY: "sk_live_example_key_123456789"
+  DATADOG_API_KEY: "dd_api_key_abcdef123456"
+
+# 3. 全対象リポジトリに共通して同期される Repository Variables (非暗号の環境変数)
+vars:
+  LOG_LEVEL: "info"
+  APP_ENV: "production"
+
+# 4. リポジトリごとの Environment に同期される Secrets および Variables
+# (対象の Environment が GitHub 上に存在しない場合は自動作成されます)
+envs:
+  - name: production
+    secrets:
+      DATABASE_URL: "postgres://prod_user:secure_prod_pass@prod-db.internal:5432/prod_db"
+      REDIS_URL: "redis://prod-redis.internal:6379"
+    vars:
+      API_ENDPOINT: "https://api.example.com"
+
+  - name: staging
+    secrets:
+      DATABASE_URL: "postgres://stage_user:secure_stage_pass@stage-db.internal:5432/stage_db"
+      REDIS_URL: "redis://stage-redis.internal:6379"
+    vars:
+      API_ENDPOINT: "https://staging-api.example.com"

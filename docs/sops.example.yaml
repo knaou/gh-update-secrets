@@ -1,0 +1,9 @@
+# .sops.yaml 設定サンプル
+#
+# SOPS の暗号化ルールを設定するファイルのサンプルです。
+# リポジトリのルートディレクトリに .sops.yaml として配置して使用します。
+
+creation_rules:
+  - path_regex: \.sops\.yaml$
+    # ご自身の age 公開鍵 (public key) に置き換えてください
+    age: "age1ql3wvd0x9ctfcganw9f3zgjfc8eswwx9q76r8wre24m3nvwvuemsvespdu"

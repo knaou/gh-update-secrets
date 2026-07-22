@@ -1,0 +1,43 @@
+# gh-secret-sync SOPS暗号化済み設定ファイルサンプル
+# SOPS (Age) で暗号化されたコンフィグファイルの構造例です。
+
+repos:
+    - ENC[AES256_GCM,data:0NqB8aJ7iA5qQ6rZJA==,iv:x1eY8K91147aZzM1K+vY0Vp3k0X9Vq8W+E0G3V4s+xM=,tag:M/7jP2Vz7Z8XwY9z0A1b2c==,type:str]
+    - ENC[AES256_GCM,data:1OrC9bK8jB6rR7saKB==,iv:y2fZ9L02258baAN2L+wZ1Wq4l1Y0Wr9X+F1H4W5t+yN=,tag:N/8kQ3W08a9YxZ0a1B2c3d==,type:str]
+secrets:
+    GLOBAL_API_KEY: ENC[AES256_GCM,data:5p7s8t9u0v1w2x3y4z5a6b7c8d9e0f,iv:z3gaA013369cbBO3M+xa2Xr5m2Z1Xs0Y+G2I5X6u+zO=,tag:O/9lR4X19b0ZyA1b2C3d4e==,type:str]
+    DATADOG_API_KEY: ENC[AES256_GCM,data:a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5,iv:a4hbB124470dcCP4N+yb3Ys6n3a2Yt1Z+H3J6Y7v+aP=,tag:P/0mS5Y20c1AzB2c3D4e5f==,type:str]
+vars:
+    LOG_LEVEL: ENC[AES256_GCM,data:a1b2c3,iv:x1eY8K91147aZzM1K+vY0Vp3k0X9Vq8W+E0G3V4s+xM=,tag:M/7jP2Vz7Z8XwY9z0A1b2c==,type:str]
+envs:
+    - name: ENC[AES256_GCM,data:b6c7d8e9f0,iv:b5icC235581edDQ5O+zc4Zt7o4b3Zu2a+I4K7Z8w+bQ=,tag:Q/1nT6Z31d2BaC3d4E5f6g==,type:str]
+      secrets:
+        DATABASE_URL: ENC[AES256_GCM,data:c7d8e9f0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0,iv:c6jdD346692feER6P+ad5Au8p5c4Av3b+J5L8a9x+cR=,tag:R/2oU7a42e3CbD4e5F6g7h==,type:str]
+        REDIS_URL: ENC[AES256_GCM,data:d8e9f0a1b2c3d4e5f6g7h8i9j0,iv:d7keE457703gfFS7Q+be6Bv9q6d5Bw4c+K6M9b0y+dS=,tag:S/3pV8b53f4DcE5f6G7h8i==,type:str]
+      vars:
+        API_ENDPOINT: ENC[AES256_GCM,data:e9f0a1b2c3d4e5,iv:d7keE457703gfFS7Q+be6Bv9q6d5Bw4c+K6M9b0y+dS=,tag:S/3pV8b53f4DcE5f6G7h8i==,type:str]
+    - name: ENC[AES256_GCM,data:e9f0a1b2,iv:e8lfF568814hgGT8R+cf7Cw0r7e6Cx5d+L7N0c1z+eT=,tag:T/4qW9c64g5EdF6g7H8i9j==,type:str]
+      secrets:
+        DATABASE_URL: ENC[AES256_GCM,data:f0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1,iv:f9mgG679925ihHU9S+dg8Dx1s8f7Dy6e+M8O1d2a+fU=,tag:U/5rX0d75h6FeG7h8I9j0k==,type:str]
+        REDIS_URL: ENC[AES256_GCM,data:a1b2c3d4e5f6g7h8i9j0k1l2,iv:g0nhH780036jiIV0T+eh9Ey2t9g8Ez7f+N9P2e3b+gV=,tag:V/6sY1e86i7GfH8i9J0k1l==,type:str]
+      vars:
+        API_ENDPOINT: ENC[AES256_GCM,data:f0a1b2c3d4e5f6g,iv:g0nhH780036jiIV0T+eh9Ey2t9g8Ez7f+N9P2e3b+gV=,tag:V/6sY1e86i7GfH8i9J0k1l==,type:str]
+sops:
+    kms: []
+    gcp_kms: []
+    azure_kv: []
+    hc_vault: []
+    age:
+        - recipient: age1ql3wvd0x9ctfcganw9f3zgjfc8eswwx9q76r8wre24m3nvwvuemsvespdu
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBDZ0dVaU1hUXdndFRXbEJB
+            aWhlOHVra0NFRStFckNTVTRGTVFocmlWcmg0ClBLM2tTNEVzdm9pWExkM29ZUkpM
+            TWFmNEN2d00rc2g2eUt5dmVndStSazAKLS0tIEpmSXZqWDRzK2U3bmhhU1hZQUxQ
+            VFNmK1IraHFFTGt2NWlyRGNtMTRxSk0K1kE9ZJj1...
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-07-21T19:00:00Z"
+    mac: ENC[AES256_GCM,data:sample_mac_hash,iv:sample_iv,tag:sample_tag,type:str]
+    pgp: []
+    unencrypted_suffix: _unencrypted
+    version: 3.8.1

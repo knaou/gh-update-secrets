@@ -87,6 +87,11 @@ func TestRun(t *testing.T) {
 
 	t.Run("apply missing token", func(t *testing.T) {
 		os.Unsetenv("GITHUB_TOKEN")
+
+		loadConfigFunc = func(path string) (*config.Config, error) {
+			return &config.Config{Repos: []config.RepoEntry{{Repo: "owner/repo1", Include: nil}}}, nil
+		}
+
 		err := run([]string{"apply", "-c", "config.yaml"})
 		if err == nil {
 			t.Fatal("expected error due to missing token, got nil")
@@ -188,6 +193,59 @@ func TestRun(t *testing.T) {
 		}
 		if !repoSecretSynced || !repoVarSynced || !envSecretSynced || !envVarSynced {
 			t.Fatalf("expected resources to be synced, repoSecret=%v, repoVar=%v, envSecret=%v, envVar=%v", repoSecretSynced, repoVarSynced, envSecretSynced, envVarSynced)
+		}
+	})
+
+	t.Run("apply success with token from config settings", func(t *testing.T) {
+		os.Unsetenv("GITHUB_TOKEN")
+
+		var capturedToken string
+		loadConfigFunc = func(path string) (*config.Config, error) {
+			return &config.Config{
+				Settings: config.Settings{GitHubToken: "config-token-123"},
+				Repos:    []config.RepoEntry{{Repo: "owner/repo1", Include: nil}},
+				Secrets:  map[string]string{"KEY": "VAL"},
+			}, nil
+		}
+
+		newClientFunc = func(ctx context.Context, token string) resourceSyncer {
+			capturedToken = token
+			return &mockSyncer{}
+		}
+
+		err := run([]string{"apply", "-c", "config.yaml"})
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if capturedToken != "config-token-123" {
+			t.Errorf("expected token from config settings, got %q", capturedToken)
+		}
+	})
+
+	t.Run("apply config token takes precedence over env var", func(t *testing.T) {
+		os.Setenv("GITHUB_TOKEN", "env-token-456")
+		defer os.Unsetenv("GITHUB_TOKEN")
+
+		var capturedToken string
+		loadConfigFunc = func(path string) (*config.Config, error) {
+			return &config.Config{
+				Settings: config.Settings{GitHubToken: "config-token-789"},
+				Repos:    []config.RepoEntry{{Repo: "owner/repo1", Include: nil}},
+				Secrets:  map[string]string{"KEY": "VAL"},
+			}, nil
+		}
+
+		newClientFunc = func(ctx context.Context, token string) resourceSyncer {
+			capturedToken = token
+			return &mockSyncer{}
+		}
+
+		err := run([]string{"apply", "-c", "config.yaml"})
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if capturedToken != "config-token-789" {
+			t.Errorf("expected config token to take precedence, got %q", capturedToken)
 		}
 	})
 

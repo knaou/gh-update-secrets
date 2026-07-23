@@ -33,6 +33,10 @@ gh-secret-sync/
 SOPSで暗号化・復号されるYAMLのフォーマット定義です（短いキー名を標準とし、後方互換キー名もサポート）。
 
 # 暗号化対象のデータ構造例
+# ツール設定
+settings:
+  github_token: "ghp_xxxxxxxxxxxxxxxxxxxx"
+
 repos:
   - owner/repo-a
   - owner/repo-b
@@ -68,7 +72,7 @@ envs:
   * -sops-config <path>: .sops.yaml設定ファイルパス（init用、デフォルト: .sops.yaml）
   * -c <path>: 設定ファイルのパス指定（apply/edit用、デフォルト: config.sops.yaml）  
 * **環境変数:**  
-  * GITHUB_TOKEN: GitHub API操作に必要なパーソナルアクセストークン（PAT）。
+  * GITHUB_TOKEN: GitHub API操作に必要なパーソナルアクセストークン（PAT）。設定ファイル内の settings.github_token が指定されている場合はそちらが優先される。
 
 ### **5.2 設定ファイル・SOPS操作モジュール (pkg/config/config.go)**
 

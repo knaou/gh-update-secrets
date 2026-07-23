@@ -1,3 +1,4 @@
 /pkg
 /bin
-/work
+/.sops.yaml
+/key.txt

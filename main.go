@@ -124,14 +124,18 @@ func handleInit(args []string) error {
 }
 
 func handleApply(configPath string) error {
-	token := os.Getenv("GITHUB_TOKEN")
-	if token == "" {
-		return fmt.Errorf("GITHUB_TOKEN environment variable is not set.%s", requiredTokenScopeNotice)
-	}
-
 	cfg, err := loadConfigFunc(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to load sops config: %w", err)
+	}
+
+	// Resolve token: config settings.github_token takes precedence over env var
+	token := cfg.Settings.GitHubToken
+	if token == "" {
+		token = os.Getenv("GITHUB_TOKEN")
+	}
+	if token == "" {
+		return fmt.Errorf("GITHUB_TOKEN is not set. Specify settings.github_token in config or set GITHUB_TOKEN environment variable.%s", requiredTokenScopeNotice)
 	}
 
 	if len(cfg.Repos) == 0 {
@@ -226,9 +230,12 @@ Flags for init:
 Flags for apply / edit:
   -c <path>   Path to SOPS config file (default: config.sops.yaml)
 
+Config Settings (in SOPS config file):
+  settings.github_token  GitHub Personal Access Token (takes precedence over GITHUB_TOKEN env var)
+
 Environment Variables:
-  GITHUB_TOKEN       GitHub Personal Access Token with required scopes:
-                     - Repository permissions: Secrets (Read & Write), Variables (Read & Write), Environments (Read & Write)
+  GITHUB_TOKEN       GitHub Personal Access Token (fallback when settings.github_token is not set)
+                     Required scopes: Secrets (Read & Write), Variables (Read & Write), Environments (Read & Write)
   SOPS_AGE_KEY       Age secret key used by SOPS to decrypt the configuration file (takes precedence over SOPS_AGE_KEY_FILE)
   SOPS_AGE_KEY_FILE  Path to the Age secret key file used by SOPS to decrypt the configuration file
 `

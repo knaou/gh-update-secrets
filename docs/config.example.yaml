@@ -3,6 +3,10 @@
 # このファイルは gh-secret-sync の設定例（平文）です。
 # 実際に運用する際は SOPS 等で暗号化してご使用ください。
 
+# 0. ツール設定
+settings:
+  github_token: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
 # 1. 設定値の定義
 secrets:
   GLOBAL_API_KEY: "sk_live_example_key_123456789"

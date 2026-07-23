@@ -19,6 +19,11 @@
 ### コンフィグファイル例 (`config.sops.yaml`)
 
 ```yaml
+# 0. ツール設定
+#    github_token を指定すると環境変数 GITHUB_TOKEN の代わりに使用します。
+settings:
+  github_token: "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
 # 1. 同期対象のリポジトリ一覧 (owner/repo 形式)
 repos:
   - my-org/service-a
@@ -111,6 +116,7 @@ gh-secret-sync edit -c config.sops.yaml
 
 1. **`GITHUB_TOKEN` の設定**
    GitHub API を操作するために Personal Access Token (PAT) を設定します。
+   設定ファイル内の `settings.github_token` に指定されている場合はそちらが優先されます。
    
    **必要な権限 (Scopes):**
    - Repository permissions:

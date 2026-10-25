@@ -67,7 +67,7 @@ func run(args []string) error {
 		if path == "" {
 			path = "config.sops.yaml"
 		}
-		return handleApply(path)
+		return handleApply(path, fs.Args())
 	case "edit":
 		fs := flag.NewFlagSet(subcommand, flag.ContinueOnError)
 		configFile := fs.String("c", "", "Path to SOPS config file")
@@ -114,8 +114,12 @@ func handleInit(args []string) error {
 	} else {
 		fmt.Printf("  SOPS config: %s (already exists, skipping creation)\n", res.SopsConfigPath)
 	}
-	fmt.Println("\nTo use this key with gh-secret-sync and SOPS, set:")
-	fmt.Printf("  export SOPS_AGE_KEY_FILE=%s\n", res.KeyPath)
+	if res.KeyPath == config.DefaultAgeKeyFile {
+		fmt.Printf("\ngh-secret-sync automatically uses %s when SOPS_AGE_KEY and SOPS_AGE_KEY_FILE are not set.\n", config.DefaultAgeKeyFile)
+	} else {
+		fmt.Println("\nTo use this key with gh-secret-sync and SOPS, set:")
+		fmt.Printf("  export SOPS_AGE_KEY_FILE=%s\n", res.KeyPath)
+	}
 	fmt.Println("\nNext steps:")
 	fmt.Println("  1. Run 'gh-secret-sync edit' to create and edit your encrypted config file.")
 	fmt.Println("  2. Run 'gh-secret-sync apply' to sync secrets and variables to GitHub repositories.")
@@ -123,10 +127,16 @@ func handleInit(args []string) error {
 	return nil
 }
 
-func handleApply(configPath string) error {
+func handleApply(configPath string, repoFilters []string) error {
 	cfg, err := loadConfigFunc(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to load sops config: %w", err)
+	}
+
+	// Build a set of repo filters for O(1) lookup
+	filterSet := make(map[string]struct{}, len(repoFilters))
+	for _, r := range repoFilters {
+		filterSet[r] = struct{}{}
 	}
 
 	// Resolve token: config settings.github_token takes precedence over env var
@@ -154,6 +164,13 @@ func handleApply(configPath string) error {
 		if len(parts) != 2 {
 			fmt.Printf("[SKIP] Invalid repository format %q. Expected 'owner/repo'.\n", repoEntry.Repo)
 			continue
+		}
+
+		// If repo filters are specified, skip repos not in the filter set
+		if len(filterSet) > 0 {
+			if _, ok := filterSet[repoEntry.Repo]; !ok {
+				continue
+			}
 		}
 		owner, repo := parts[0], parts[1]
 
@@ -216,7 +233,7 @@ func handleEdit(configPath string) error {
 }
 
 func printUsage() {
-	usage := `Usage: gh-secret-sync <subcommand> [flags]
+	usage := `Usage: gh-secret-sync <subcommand> [flags] [args...]
 
 Subcommands:
   init     Generate a new SOPS Age key and .sops.yaml file
@@ -227,7 +244,13 @@ Flags for init:
   -o <path>           Path to output Age key file (default: key.txt)
   -sops-config <path> Path to .sops.yaml file (default: .sops.yaml)
 
-Flags for apply / edit:
+Flags for apply:
+  -c <path>   Path to SOPS config file (default: config.sops.yaml)
+  [repos...]  Optional list of repositories (owner/repo) to sync.
+              If omitted, all repositories in the config are synced.
+              Example: gh-secret-sync apply owner/repo1 owner/repo2
+
+Flags for edit:
   -c <path>   Path to SOPS config file (default: config.sops.yaml)
 
 Config Settings (in SOPS config file):
@@ -238,6 +261,7 @@ Environment Variables:
                      Required scopes: Secrets (Read & Write), Variables (Read & Write), Environments (Read & Write)
   SOPS_AGE_KEY       Age secret key used by SOPS to decrypt the configuration file (takes precedence over SOPS_AGE_KEY_FILE)
   SOPS_AGE_KEY_FILE  Path to the Age secret key file used by SOPS to decrypt the configuration file
+                     If neither is set, key.txt in the current directory is used by default.
 `
 	fmt.Print(usage)
 }

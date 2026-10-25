@@ -409,6 +409,127 @@ func TestRun(t *testing.T) {
 	})
 }
 
+func TestApplyWithRepoArgFilter(t *testing.T) {
+	origLoadConfig := loadConfigFunc
+	origNewClient := newClientFunc
+	defer func() {
+		loadConfigFunc = origLoadConfig
+		newClientFunc = origNewClient
+	}()
+
+	os.Setenv("GITHUB_TOKEN", "dummy-token")
+	defer os.Unsetenv("GITHUB_TOKEN")
+
+	loadConfigFunc = func(path string) (*config.Config, error) {
+		return &config.Config{
+			Repos: []config.RepoEntry{
+				{Repo: "owner/repo1", Include: nil},
+				{Repo: "owner/repo2", Include: nil},
+				{Repo: "owner/repo3", Include: nil},
+			},
+			Secrets: map[string]string{
+				"SECRET_A": "VAL_A",
+			},
+		}, nil
+	}
+
+	t.Run("filter to single repo", func(t *testing.T) {
+		syncedRepos := map[string]bool{}
+
+		newClientFunc = func(ctx context.Context, token string) resourceSyncer {
+			return &mockSyncer{
+				syncRepoSecretFunc: func(ctx context.Context, owner, repo, secretName, secretValue string) error {
+					syncedRepos[owner+"/"+repo] = true
+					return nil
+				},
+			}
+		}
+
+		err := run([]string{"apply", "-c", "config.yaml", "owner/repo2"})
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if !syncedRepos["owner/repo2"] {
+			t.Error("expected owner/repo2 to be synced")
+		}
+		if syncedRepos["owner/repo1"] {
+			t.Error("expected owner/repo1 to NOT be synced")
+		}
+		if syncedRepos["owner/repo3"] {
+			t.Error("expected owner/repo3 to NOT be synced")
+		}
+	})
+
+	t.Run("filter to multiple repos", func(t *testing.T) {
+		syncedRepos := map[string]bool{}
+
+		newClientFunc = func(ctx context.Context, token string) resourceSyncer {
+			return &mockSyncer{
+				syncRepoSecretFunc: func(ctx context.Context, owner, repo, secretName, secretValue string) error {
+					syncedRepos[owner+"/"+repo] = true
+					return nil
+				},
+			}
+		}
+
+		err := run([]string{"apply", "-c", "config.yaml", "owner/repo1", "owner/repo3"})
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if !syncedRepos["owner/repo1"] {
+			t.Error("expected owner/repo1 to be synced")
+		}
+		if syncedRepos["owner/repo2"] {
+			t.Error("expected owner/repo2 to NOT be synced")
+		}
+		if !syncedRepos["owner/repo3"] {
+			t.Error("expected owner/repo3 to be synced")
+		}
+	})
+
+	t.Run("filter with non-existent repo syncs nothing", func(t *testing.T) {
+		syncedRepos := map[string]bool{}
+
+		newClientFunc = func(ctx context.Context, token string) resourceSyncer {
+			return &mockSyncer{
+				syncRepoSecretFunc: func(ctx context.Context, owner, repo, secretName, secretValue string) error {
+					syncedRepos[owner+"/"+repo] = true
+					return nil
+				},
+			}
+		}
+
+		err := run([]string{"apply", "-c", "config.yaml", "owner/nonexistent"})
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if len(syncedRepos) != 0 {
+			t.Errorf("expected no repos to be synced, got %v", syncedRepos)
+		}
+	})
+
+	t.Run("no filter syncs all repos", func(t *testing.T) {
+		syncedRepos := map[string]bool{}
+
+		newClientFunc = func(ctx context.Context, token string) resourceSyncer {
+			return &mockSyncer{
+				syncRepoSecretFunc: func(ctx context.Context, owner, repo, secretName, secretValue string) error {
+					syncedRepos[owner+"/"+repo] = true
+					return nil
+				},
+			}
+		}
+
+		err := run([]string{"apply", "-c", "config.yaml"})
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+		if len(syncedRepos) != 3 {
+			t.Errorf("expected all 3 repos to be synced, got %v", syncedRepos)
+		}
+	})
+}
+
 func TestApplyPerRepoFiltering(t *testing.T) {
 	origLoadConfig := loadConfigFunc
 	origNewClient := newClientFunc

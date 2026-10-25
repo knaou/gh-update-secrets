@@ -79,12 +79,11 @@ gh-secret-sync init
 >   Public key:  age1ql3wvd0x9ctfcganw9f3zgjfc8eswwx9q76r8wre24m3nvwvuemsvespdu
 >   Key file:    key.txt (chmod 0600)
 >   SOPS config: .sops.yaml
-> 
-> To use this key with gh-secret-sync and SOPS, set:
->   export SOPS_AGE_KEY_FILE=key.txt
+>
+> gh-secret-sync automatically uses key.txt when SOPS_AGE_KEY and SOPS_AGE_KEY_FILE are not set.
 > ```
 
-鍵生成後、環境変数 `SOPS_AGE_KEY_FILE` に鍵ファイルのパスを設定してください:
+`SOPS_AGE_KEY` / `SOPS_AGE_KEY_FILE` を設定していない場合、`gh-secret-sync` は自動的にカレントディレクトリの `key.txt` を鍵ファイルとして使用します。任意の場所の鍵ファイルを使用する場合は、環境変数 `SOPS_AGE_KEY_FILE` に鍵ファイルのパスを設定してください:
 
 ```bash
 export SOPS_AGE_KEY_FILE="$(pwd)/key.txt"
@@ -130,14 +129,16 @@ gh-secret-sync edit -c config.sops.yaml
 
 2. **復号鍵（`SOPS_AGE_KEY_FILE` または `SOPS_AGE_PASSPHRASE`）の設定**
 
-   - 鍵ファイルを使用する場合:
-     ```bash
-     export SOPS_AGE_KEY_FILE="$(pwd)/key.txt"
-     ```
-   - パスフレーズを使用する場合:
-     ```bash
-     export SOPS_AGE_PASSPHRASE="your-secure-passphrase"
-     ```
+    `SOPS_AGE_KEY` / `SOPS_AGE_KEY_FILE` を設定していない場合、カレントディレクトリの `key.txt` がデフォルトで使用されます。
+
+    - 鍵ファイルを使用する場合:
+      ```bash
+      export SOPS_AGE_KEY_FILE="$(pwd)/key.txt"
+      ```
+    - パスフレーズを使用する場合:
+      ```bash
+      export SOPS_AGE_PASSPHRASE="your-secure-passphrase"
+      ```
 
 3. **外部ツール依存に関する注意**
    - `edit` サブコマンドでの再暗号化処理のために、システムに CLI ツール `sops` がインストールされ、実行可能（パスが通った状態）である必要があります。
